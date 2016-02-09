@@ -11,7 +11,7 @@
 #define GPSECHO  false
 
 // Metric or not? Synthetica! metric = true, imperial = false
-#define units true
+boolean displayUnits = true;
 
 // Instansiate LCD object
 Adafruit_LiquidCrystal lcd(0);
