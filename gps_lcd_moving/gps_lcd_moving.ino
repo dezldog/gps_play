@@ -1,6 +1,8 @@
 //dezldog
 // Playing with my gps and LCD
-// code borrowed from many.
+// some code mine, some code borrowed from Adafruit.
+// Buy from them; they support the community. Alibaba vendors, etc, don't
+//
 
 #include "SoftwareSerial.h"
 #include "Adafruit_GPS.h"
@@ -13,23 +15,32 @@
 // Metric or not? Synthetica! metric = true, imperial = false
 boolean displayUnits = true;
 
-// Instansiate LCD object
+// create LCD object
 Adafruit_LiquidCrystal lcd(0);
 
 //Set up softwareserial
 int rxPin = 8;
 int txPin = 7;
 int GPSBaud = 9600;
-SoftwareSerial gpsSerial(rxPin, txPin); // create gps sensor connection object
 
-//Instansiate GPS
-Adafruit_GPS GPS(&gpsSerial); // create gps object
+// Variables for formatting
+  int hours = 0;
+  int minutes = 0;
+  int seconds = 0;
+  int sats = 0;
+  float velocity = 0;
+
+// create gps sensor connection object
+SoftwareSerial gpsSerial(rxPin, txPin);
+
+// create gps object
+Adafruit_GPS GPS(&gpsSerial);
+
 // this keeps track of whether we're using the interrupt
 // off by default!
 boolean usingInterrupt = false;
 void useInterrupt(boolean); // Func prototype keeps Arduino 0023 happy
 uint32_t timer = millis();
-
 
 void setup()
 {
@@ -37,15 +48,14 @@ void setup()
   Serial.begin(57600);
   gpsSerial.begin (GPSBaud);
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
-  // Set the update rate
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_5HZ);   // Hz update rate
-  // Request updates on antenna status, comment out to keep quiet
+  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_5HZ);
   GPS.sendCommand(PGCMD_ANTENNA);
+
   // the nice thing about this code is you can have a timer0 interrupt go off
   // every 1 millisecond, and read data from the GPS for you. that makes the
   // loop code a heck of a lot easier!
   useInterrupt(true);
-  //GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+
   // Print a message to the LCD
   lcd.begin(16, 4);
   lcd.print("LCD Setup Complete");
@@ -57,7 +67,8 @@ void loop()
 {
   // in case you are not using the interrupt above, you'll
   // need to 'hand query' the GPS, not suggested :(
-  if (! usingInterrupt) {
+  if (! usingInterrupt)
+  {
     // read data from the GPS in the 'main loop'
     char c = GPS.read();
     // if you want to debug, this is a good time to do it!
@@ -65,13 +76,8 @@ void loop()
       if (c) Serial.print(c);
   }
 
-  // if a sentence is received, we can check the checksum, parse it...
-  if (GPS.newNMEAreceived()) {
-    // a tricky thing here is if we print the NMEA sentence, or data
-    // we end up not listening and catching other sentences!
-    // so be very wary if using OUTPUT_ALLDATA and trytng to print out data
-    //Serial.println(GPS.lastNMEA());   // this also sets the newNMEAreceived() flag to false
-
+  if (GPS.newNMEAreceived())
+  {
     if (!GPS.parse(GPS.lastNMEA()))   // this also sets the newNMEAreceived() flag to false
       return;  // we can fail to parse a sentence in which case we should just wait for another
   }
@@ -83,34 +89,8 @@ void loop()
   if (millis() - timer > 1000)
   {
     timer = millis(); // reset the timer
-    /*
-    Serial.print("\nTime: ");
-    Serial.print(GPS.hour, DEC); Serial.print(':');
-    Serial.print(GPS.minute, DEC); Serial.print(':');
-    Serial.print(GPS.seconds, DEC); Serial.println();
-    Serial.print("Date: ");
-    Serial.print(GPS.day, DEC); Serial.print('/');
-    Serial.print(GPS.month, DEC); Serial.print("/20");
-    Serial.println(GPS.year, DEC);
-    Serial.print("Fix: "); Serial.print((int)GPS.fix);
-    Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
-    if (GPS.fix)
-      {
-      Serial.print("Location: ");
-      Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
-      Serial.print(", ");
-      Serial.print(GPS.longitude, 4); Serial.println(GPS.lon);
-      Serial.print("Location (in degrees.decimals): ");
-      Serial.print(GPS.latitudeDegrees, 6);
-      Serial.print(", ");
-      Serial.println(GPS.longitudeDegrees, 6);
-      Serial.print("Speed (knots): "); Serial.println(GPS.speed);
-      Serial.print("Angle: "); Serial.println(GPS.angle);
-      Serial.print("Altitude: "); Serial.println(GPS.altitude);
-      Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
-      }
-    */  
     displayLcd();
+    writeToSerial();
   }
 }
 
@@ -142,62 +122,38 @@ void useInterrupt(boolean v) {
 
 void displayLcd()
 {
-  displayDateLCD();
-  displayTimeLCD();
-  displayVeloLCD();
-  displayAltLCD();
-  displaySatLCD();
-  displayWhereLCD();
-  displayFixLCD();
-}
 
-void displayFixLCD()
+  lcd.setCursor(17, 3);
+  if ((int)GPS.fix)
   {
-   lcd.setCursor(17, 3);
-   if ((int)GPS.fix)
-    {
-      lcd.print("Fix"); 
-    }
-    else
-    {
-      lcd.print("NFX");
-    }
+    lcd.print("Fix");
   }
-
-void  displayVeloLCD()
+  else
   {
-    float velocity = 0;
-    velocity = GPS.speed;
-        
-    lcd.setCursor(0, 1);
-    lcd.print("V=");
-    
-    if (velocity < 10 )
-      {
-        lcd.print("0");
-      }
-    lcd.print(velocity);
+    lcd.print("NFX");
   }
-
-void  displayAltLCD()
+  velocity = GPS.speed;
+  lcd.setCursor(0, 1);
+  lcd.print("V=");
+  if (velocity < 10 )
   {
-    lcd.setCursor(10, 1);
-    lcd.print("Alt:"); lcd.print(GPS.altitude);
+    lcd.print("0");
   }
-  
-void  displaySatLCD()
+  lcd.print(velocity);
+  lcd.setCursor(10, 1);
+  lcd.print("Alt:"); lcd.print(GPS.altitude);
+  lcd.setCursor(14, 2);
+  sats = GPS.satellites;
+  lcd.print("Sat:");
+  if (sats < 10)
   {
-    lcd.setCursor(14, 2);
-    lcd.print("Sat:"); lcd.print(GPS.satellites);
+    lcd.print("0");
+    lcd.print(sats);
   }
-
-
-void displayTimeLCD()
-{
-  int hours = 0;
-  int minutes = 0;
-  int seconds = 0;
-
+  else
+  {
+    lcd.print(sats);
+  }
   // Where are we ging to show the time?
   lcd.setCursor(9, 0);
   hours = GPS.hour;
@@ -233,11 +189,6 @@ void displayTimeLCD()
     lcd.print(seconds);
   }
   lcd.print("UTC");
-
-}
-
-void displayDateLCD()
-{
   //Where to we print the date?
   lcd.setCursor(0, 0);
   lcd.print(GPS.month);
@@ -246,13 +197,38 @@ void displayDateLCD()
   lcd.print("/");
   lcd.print(GPS.year);
   lcd.print(" ");
-}
-
-void displayWhereLCD()
-{
   lcd.setCursor(0, 2);
   lcd.print("Lat:"); lcd.print(GPS.latitudeDegrees, 6);
   lcd.setCursor(0, 3);
   lcd.print("Lon:"); lcd.print(GPS.longitudeDegrees, 6);
+}
+
+void writeToSerial()
+{
+  Serial.print("\nTime: ");
+  Serial.print(GPS.hour, DEC); Serial.print(':');
+  Serial.print(GPS.minute, DEC); Serial.print(':');
+  Serial.print(GPS.seconds, DEC); Serial.println();
+  Serial.print("Date: ");
+  Serial.print(GPS.day, DEC); Serial.print('/');
+  Serial.print(GPS.month, DEC); Serial.print("/20");
+  Serial.println(GPS.year, DEC);
+  Serial.print("Fix: "); Serial.print((int)GPS.fix);
+  Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
+  if (GPS.fix)
+  {
+    Serial.print("Location: ");
+    Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
+    Serial.print(", ");
+    Serial.print(GPS.longitude, 4); Serial.println(GPS.lon);
+    Serial.print("Location (in degrees.decimals): ");
+    Serial.print(GPS.latitudeDegrees, 6);
+    Serial.print(", ");
+    Serial.println(GPS.longitudeDegrees, 6);
+    Serial.print("Speed (knots): "); Serial.println(GPS.speed);
+    Serial.print("Angle: "); Serial.println(GPS.angle);
+    Serial.print("Altitude: "); Serial.println(GPS.altitude);
+    Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
+  }
 }
 
