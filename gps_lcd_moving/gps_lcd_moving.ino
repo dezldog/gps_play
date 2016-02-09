@@ -148,7 +148,21 @@ void displayLcd()
   displayAltLCD();
   displaySatLCD();
   displayWhereLCD();
+  displayFixLCD();
 }
+
+void displayFixLCD()
+  {
+   lcd.setCursor(17, 3);
+   if ((int)GPS.fix)
+    {
+      lcd.print("Fix"); 
+    }
+    else
+    {
+      lcd.print("NFX");
+    }
+  }
 
 void  displayVeloLCD()
   {
