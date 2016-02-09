@@ -1,54 +1,23 @@
-//dezldog 31JAN16
-// Getting data from DHT humidity/temperature, a potentiometer, a CDS cell, and a GPS
-// output them to serial and LCD
+//dezldog
+// Playing with my gps and LCD
 // code borrowed from many.
 
-#include "DHT.h"
 #include "SoftwareSerial.h"
 #include "Adafruit_GPS.h"
 #include "Adafruit_LiquidCrystal.h"
-
-#define DHTPIN0 2     // what pins DHTs are connected to
-#define DHTPIN1 4
-#define DHTTYPE DHT11   // We are using DHT11s
-#define PROBE_0 "Outside"  // Let's name the DHT probes
-#define PROBE_1 "Inside"
 
 // Set GPSECHO to 'false' to turn off echoing the GPS data to the Serial console
 // Set to 'true' if you want to debug and listen to the raw GPS sentences.
 #define GPSECHO  false
 
-
-//Sample time in seconds
-const int sampleSeconds = 30;
-const int sampleMultiplier = 1000; //because milliseconds
-int sampleDelay = (sampleSeconds * sampleMultiplier);
-
 // Instansiate LCD object
 Adafruit_LiquidCrystal lcd(0);
-
-// Instansiate DHT sensors
-DHT dht0(DHTPIN0, DHTTYPE);
-DHT dht1(DHTPIN1, DHTTYPE);
-
-//define photocell input/variable
-int photocellPin = 0;     // the cell and 10K pulldown are connected to a0
-int photocellReading;     // the analog reading from the sensor divider
-
-//define potentiometer input/variable
-int potPin = 1;     // the potentiometer is connected to a1
-float potReading;     // the analog reading from the potentiometer
-
-//calibrate a/d for potentiometer
-float yIntercept = 646.00;
-float xIntercept = 3.3;
-float slope = ((0 - xIntercept) / (yIntercept - 0));
 
 //Set up softwareserial
 int rxPin = 8;
 int txPin = 7;
 int GPSBaud = 9600;
-SoftwareSerial gpsSerial(rxPin, txPin); // create gps sensor connection
+SoftwareSerial gpsSerial(rxPin, txPin); // create gps sensor connection object
 
 //Instansiate GPS
 Adafruit_GPS GPS(&gpsSerial); // create gps object
@@ -62,33 +31,21 @@ uint32_t timer = millis();
 void setup()
 {
   //start gps
-  Serial.begin(115200);
-
+  Serial.begin(57600);
   gpsSerial.begin (GPSBaud);
-  // uncomment this line to turn on RMC (recommended minimum) and GGA (fix data) including altitude
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
-  // uncomment this line to turn on only the "minimum recommended" data
-  //GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
-  // For parsing data, we don't suggest using anything but either RMC only or RMC+GGA since
-  // the parser doesn't care about other sentences at this time
   // Set the update rate
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);   // 1 Hz update rate
-  // For the parsing code to work nicely and have time to sort thru the data, and
-  // print it out we don't suggest using anything higher than 1 Hz
+  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_5HZ);   // Hz update rate
   // Request updates on antenna status, comment out to keep quiet
   GPS.sendCommand(PGCMD_ANTENNA);
   // the nice thing about this code is you can have a timer0 interrupt go off
   // every 1 millisecond, and read data from the GPS for you. that makes the
   // loop code a heck of a lot easier!
-  useInterrupt(true); GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
-
-  //start dht
-  dht0.begin();
-  dht1.begin();
-  lcd.begin(16, 4);
+  useInterrupt(true);
+  //GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
   // Print a message to the LCD
+  lcd.begin(16, 4);
   lcd.print("LCD Setup Complete");
-  Serial.println("Serial Setup Complete");
   delay(3000);
   lcd.clear();
 }
@@ -119,10 +76,10 @@ void loop()
   // if millis() or timer wraps around, we'll just reset it
   if (timer > millis())  timer = millis();
 
-  // approximately every 2 seconds or so, print out the current stats
-  if (millis() - timer > 2000) {
+  // approximately every 1 seconds or so, print out the current stats
+  if (millis() - timer > 1000)
+  {
     timer = millis(); // reset the timer
-
     Serial.print("\nTime: ");
     Serial.print(GPS.hour, DEC); Serial.print(':');
     Serial.print(GPS.minute, DEC); Serial.print(':');
@@ -138,7 +95,7 @@ void loop()
       Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
       Serial.print(", ");
       Serial.print(GPS.longitude, 4); Serial.println(GPS.lon);
-      Serial.print("Location (in degrees, works with Google Maps): ");
+      Serial.print("Location (in degrees.decimals): ");
       Serial.print(GPS.latitudeDegrees, 6);
       Serial.print(", ");
       Serial.println(GPS.longitudeDegrees, 6);
@@ -146,9 +103,8 @@ void loop()
       Serial.print("Angle: "); Serial.println(GPS.angle);
       Serial.print("Altitude: "); Serial.println(GPS.altitude);
       Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
-      displayInfo();
-      displayLcd();
     }
+    displayLcd();
   }
 }
 
@@ -178,96 +134,21 @@ void useInterrupt(boolean v) {
   }
 }
 
-
-void displayInfo()
-{
-  //Process DHT data
-  float h0 = dht0.readHumidity();
-  float t0 = dht0.readTemperature();
-  float f0 = dht0.readTemperature(true);
-
-  float h1 = dht1.readHumidity();
-  float t1 = dht1.readTemperature();
-  float f1 = dht1.readTemperature(true);
-
-  // Check if any reads failed and exit early (to try again).
-  if (isnan(h0) || isnan(t0) || isnan(f0)) {
-    Serial.println("Failed to read from DHT0 sensor!");
-    return;
-  }
-  if (isnan(h1) || isnan(t1) || isnan(f1)) {
-    Serial.println("Failed to read from DHT1 sensor!");
-    return;
-  }
-
-  float hif0 = dht0.computeHeatIndex(f0, h0);    // Compute heat index in Fahrenheit (the default)
-  float hic0 = dht0.computeHeatIndex(t0, h0, false);  // Compute heat index in Celsius (isFahreheit = false)
-
-  float hif1 = dht1.computeHeatIndex(f1, h1);
-  float hic1 = dht1.computeHeatIndex(t1, h1, false);
-
-  //Process CDS cell reading
-  photocellReading = analogRead(photocellPin);
-  potReading = analogRead(potPin);
-
-  //Calculate Volts from potentiometer a/d value
-  float volts = 3.3 + (potReading * slope);
-
-  //Print the other data
-  Serial.print("CDS cell value = "); Serial.println(photocellReading);
-  Serial.print("Potentiometer reading = "); Serial.print( volts); Serial.println(" V");
-  Serial.print(PROBE_0" Humidity: ");
-  Serial.print(h0);
-  Serial.print(" %");
-  Serial.println();
-  Serial.print(PROBE_0" Temp: ");
-  Serial.print(t0);
-  Serial.print(" C");
-  Serial.println();
-  Serial.print(PROBE_0" Temp: ");
-  Serial.print(f0);
-  Serial.print(" F");
-  Serial.println();
-  Serial.print(PROBE_0" Heat Index: ");
-  Serial.print(hic0);
-  Serial.print(" C");
-  Serial.println();
-  Serial.print(PROBE_0" Heat Index: ");
-  Serial.print(hif0);
-  Serial.print(" F");
-  Serial.println();
-  Serial.print(PROBE_1" Humidity: ");
-  Serial.print(h1);
-  Serial.print(" %");
-  Serial.println();
-  Serial.print(PROBE_1" Temp: ");
-  Serial.print(t1);
-  Serial.print(" C");
-  Serial.println();
-  Serial.print(PROBE_1" Temp: ");
-  Serial.print(f1);
-  Serial.print(" F");
-  Serial.println();
-  Serial.print(PROBE_1" Heat Index: ");
-  Serial.print(hic1);
-  Serial.print(" C");
-  Serial.println();
-  Serial.print(PROBE_1" Heat Index: ");
-  Serial.print(hif1);
-  Serial.print(" F");
-  Serial.println();
-  Serial.println();
-}
-
 void displayLcd()
 {
+  displayDateLCD();
+  displayTimeLCD();
+  displayWhereLCD();
+}
+
+void displayTimeLCD()
+{
+  int hours = 0;
   int minutes = 0;
   int seconds = 0;
-  int hours = 0;
 
-  // Send data to the LCD too
-  lcd.setCursor(0, 0);
-  lcd.print("Time: ");
+  // Where are we ging to show the time?
+  lcd.setCursor(9, 0);
   hours = GPS.hour;
   if (hours < 10)
   {
@@ -300,18 +181,27 @@ void displayLcd()
   {
     lcd.print(seconds);
   }
-  lcd.print(" GMT");
-  lcd.setCursor(0, 1);
-  lcd.print("Date: ");
+  lcd.print(" UTC");
+
+}
+
+void displayDateLCD()
+{
+  //Where to we print the date?
+  lcd.setCursor(0, 0);
   lcd.print(GPS.month);
-  lcd.print('/');
+  lcd.print("/");
   lcd.print(GPS.day);
-  lcd.print("/20");
+  lcd.print("/");
   lcd.print(GPS.year);
+  lcd.print(" ");
+}
+
+void displayWhereLCD()
+{
   lcd.setCursor(0, 2);
   lcd.print("Lat:  "); lcd.print(GPS.latitudeDegrees, 6);
   lcd.setCursor(0, 3);
   lcd.print("Lon: "); lcd.print(GPS.longitudeDegrees, 6);
-
 }
 
