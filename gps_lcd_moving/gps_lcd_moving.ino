@@ -10,6 +10,9 @@
 // Set to 'true' if you want to debug and listen to the raw GPS sentences.
 #define GPSECHO  false
 
+// Metric or not? Synthetica! metric = true, imperial = false
+#define units true
+
 // Instansiate LCD object
 Adafruit_LiquidCrystal lcd(0);
 
@@ -80,6 +83,7 @@ void loop()
   if (millis() - timer > 1000)
   {
     timer = millis(); // reset the timer
+    /*
     Serial.print("\nTime: ");
     Serial.print(GPS.hour, DEC); Serial.print(':');
     Serial.print(GPS.minute, DEC); Serial.print(':');
@@ -90,7 +94,8 @@ void loop()
     Serial.println(GPS.year, DEC);
     Serial.print("Fix: "); Serial.print((int)GPS.fix);
     Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
-    if (GPS.fix) {
+    if (GPS.fix)
+      {
       Serial.print("Location: ");
       Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
       Serial.print(", ");
@@ -103,7 +108,8 @@ void loop()
       Serial.print("Angle: "); Serial.println(GPS.angle);
       Serial.print("Altitude: "); Serial.println(GPS.altitude);
       Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
-    }
+      }
+    */  
     displayLcd();
   }
 }
@@ -138,8 +144,39 @@ void displayLcd()
 {
   displayDateLCD();
   displayTimeLCD();
+  displayVeloLCD();
+  displayAltLCD();
+  displaySatLCD();
   displayWhereLCD();
 }
+
+void  displayVeloLCD()
+  {
+    float velocity = 0;
+    velocity = GPS.speed;
+        
+    lcd.setCursor(0, 1);
+    lcd.print("V=");
+    
+    if (velocity < 10 )
+      {
+        lcd.print("0");
+      }
+    lcd.print(velocity);
+  }
+
+void  displayAltLCD()
+  {
+    lcd.setCursor(10, 1);
+    lcd.print("Alt:"); lcd.print(GPS.altitude);
+  }
+  
+void  displaySatLCD()
+  {
+    lcd.setCursor(14, 2);
+    lcd.print("Sat:"); lcd.print(GPS.satellites);
+  }
+
 
 void displayTimeLCD()
 {
@@ -181,7 +218,7 @@ void displayTimeLCD()
   {
     lcd.print(seconds);
   }
-  lcd.print(" UTC");
+  lcd.print("UTC");
 
 }
 
@@ -200,8 +237,8 @@ void displayDateLCD()
 void displayWhereLCD()
 {
   lcd.setCursor(0, 2);
-  lcd.print("Lat:  "); lcd.print(GPS.latitudeDegrees, 6);
+  lcd.print("Lat:"); lcd.print(GPS.latitudeDegrees, 6);
   lcd.setCursor(0, 3);
-  lcd.print("Lon: "); lcd.print(GPS.longitudeDegrees, 6);
+  lcd.print("Lon:"); lcd.print(GPS.longitudeDegrees, 6);
 }
 
