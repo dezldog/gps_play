@@ -31,11 +31,6 @@ float velocity = 0;
 uint32_t timer = millis();
 int GPSBaud = 9600;
 
-// This keeps track of whether we're using the interrupt
-// off by default!
-boolean usingInterrupt = false;
-//void useInterrupt(boolean); // Func prototype keeps Arduino 0023 happy
-
 void setup()
 {
   // Start gps
@@ -46,15 +41,13 @@ void setup()
   GPS.sendCommand(PMTK_SET_NMEA_UPDATE_5HZ);
   GPS.sendCommand(PGCMD_ANTENNA);
 
-  usingInterrupt = false;
-
   // Setup LCD and print a fun message
   lcd.begin(16, 4);
   lcd.print("Welcome to Dezldog");
   lcd.setCursor(0, 1);
   lcd.print("Start-Up Complete");
   lcd.setCursor(0, 2);
-  lcd.print("some sort version #");
+  lcd.print("Version 19FEB16.1");
   lcd.setCursor(0, 3);
   for (int x = 0; x < 20; x++)
   {
