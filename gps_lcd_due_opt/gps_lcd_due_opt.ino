@@ -160,7 +160,7 @@ void displayLcd()
   lcd.print(velocity);
 
   //Show Altitude
-  lcd.setCursor(15, 1);
+  lcd.setCursor(14, 1);
   lcd.print(GPS.altitude);
 
   //Display the Latitude
